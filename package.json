@@ -1,0 +1,24 @@
+{
+  "name": "f054-iot-sala-temperatura",
+  "version": "1.0.0",
+  "description": "Pacote técnico pronto para a atividade parcial de **Fundamentos de Internet das Coisas**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node node_modules/node-red/red.js --userDir ./nodered-data --settings ./nodered-data/settings.js",
+    "simular-mqtt": "node scripts/simular-mqtt.js",
+    "gerar-leituras": "node scripts/gerar-leituras.js",
+    "dashboard": "node scripts/servidor-dashboard.js",
+    "dev": "npm run start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mqtt": "^5.16.1",
+    "node-red": "3.1.15",
+    "node-red-dashboard": "^3.6.6"
+  }
+}

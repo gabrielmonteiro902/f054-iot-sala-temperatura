@@ -1,0 +1,9 @@
+node_modules/
+nodered-data/node_modules/
+nodered-data/.config.*
+nodered-data/.sessions.json
+nodered-data/.flows.json.backup
+.DS_Store
+*.log
+.npm/
+nodered-data/*.backup

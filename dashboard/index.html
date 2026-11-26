@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IoT Sala 101 — Monitoramento</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+      --danger: #ef4444;
+      --accent: #38bdf8;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at top, #1e3a5f, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    h1 { margin: 0 0 4px; font-size: 1.5rem; }
+    .sub { color: var(--muted); margin-bottom: 20px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: color-mix(in srgb, var(--card) 92%, black);
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .label { color: var(--muted); font-size: 0.85rem; }
+    .value { font-size: 2.6rem; font-weight: 700; margin: 8px 0; }
+    .unit { font-size: 1rem; color: var(--muted); }
+    .status {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      background: #334155;
+    }
+    .status.ok { background: color-mix(in srgb, var(--ok) 25%, transparent); color: #86efac; }
+    .status.alert { background: color-mix(in srgb, var(--danger) 25%, transparent); color: #fecaca; }
+    .chart-wrap { grid-column: 1 / -1; min-height: 320px; }
+    canvas { width: 100% !important; max-height: 300px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    button {
+      background: var(--accent);
+      color: #0f172a;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #334155; }
+    #conn { color: var(--warn); }
+    #conn.online { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <h1>Monitoramento — Sala 101</h1>
+  <p class="sub">F054 IoT · MQTT · Limite: 28 °C · <span id="conn">conectando...</span></p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Temperatura</div>
+      <div class="value"><span id="temp">--</span><span class="unit"> °C</span></div>
+      <span id="alerta" class="status">Aguardando leituras</span>
+    </div>
+    <div class="card">
+      <div class="label">Umidade</div>
+      <div class="value"><span id="umid">--</span><span class="unit"> %</span></div>
+      <div class="label">Ventilador: <strong id="vent">--</strong></div>
+    </div>
+    <div class="card">
+      <div class="label">Leituras registradas</div>
+      <div class="value"><span id="count">0</span></div>
+      <div class="row">
+        <button id="btnSim">Simular 1 leitura</button>
+        <button id="btnClear">Limpar gráfico</button>
+      </div>
+    </div>
+    <div class="card chart-wrap">
+      <div class="label">Histórico de temperatura</div>
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="card chart-wrap">
+      <div class="label">Últimas leituras</div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Temp</th><th>Umid</th><th>Ventilador</th><th>Hora</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const LIMITE = 28;
+    let contadorLocal = 0;
+    const historico = [];
+
+    const elTemp = document.getElementById("temp");
+    const elUmid = document.getElementById("umid");
+    const elVent = document.getElementById("vent");
+    const elCount = document.getElementById("count");
+    const elAlerta = document.getElementById("alerta");
+    const elConn = document.getElementById("conn");
+    const tbody = document.getElementById("tbody");
+
+    const chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Temperatura (°C)",
+          data: [],
+          borderColor: "#38bdf8",
+          backgroundColor: "rgba(56,189,248,0.15)",
+          tension: 0.25,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { min: 15, max: 40, ticks: { color: "#94a3b8" }, grid: { color: "#334155" } },
+          x: { ticks: { color: "#94a3b8" }, grid: { color: "#1e293b" } },
+        },
+        plugins: { legend: { labels: { color: "#e2e8f0" } } },
+      },
+    });
+
+    function atualizarUI(dados) {
+      contadorLocal = dados.n || contadorLocal + 1;
+      const hora = dados.hora || new Date().toLocaleTimeString();
+      elTemp.textContent = dados.temperatura;
+      elUmid.textContent = dados.umidade;
+      elVent.textContent = dados.ventilador;
+      elCount.textContent = contadorLocal;
+
+      const alto = Number(dados.temperatura) > (dados.limite || LIMITE);
+      elAlerta.textContent = alto
+        ? "Temperatura alta — ventilador acionado"
+        : "Temperatura dentro do limite";
+      elAlerta.className = "status " + (alto ? "alert" : "ok");
+
+      chart.data.labels.push(hora);
+      chart.data.datasets[0].data.push(dados.temperatura);
+      if (chart.data.labels.length > 30) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+
+      historico.unshift({ n: contadorLocal, ...dados, hora });
+      if (historico.length > 20) historico.pop();
+      tbody.innerHTML = historico.map((h) =>
+        `<tr><td>${h.n}</td><td>${h.temperatura}</td><td>${h.umidade}</td><td>${h.ventilador}</td><td>${h.hora}</td></tr>`
+      ).join("");
+    }
+
+    const es = new EventSource("/events");
+    es.onopen = () => {
+      elConn.textContent = "online";
+      elConn.className = "online";
+    };
+    es.onerror = () => {
+      elConn.textContent = "reconectando...";
+      elConn.className = "";
+    };
+    es.onmessage = (ev) => {
+      try { atualizarUI(JSON.parse(ev.data)); } catch (e) { console.error(e); }
+    };
+
+    document.getElementById("btnSim").onclick = async () => {
+      await fetch("/api/simular", { method: "POST" });
+    };
+    document.getElementById("btnClear").onclick = () => {
+      chart.data.labels = [];
+      chart.data.datasets[0].data = [];
+      chart.update();
+    };
+  </script>
+</body>
+</html>

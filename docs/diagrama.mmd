@@ -1,0 +1,7 @@
+flowchart LR
+  A[DHT22<br/>Sensor] --> B[ESP32<br/>Controlador]
+  B -->|MQTT JSON| C[Broker HiveMQ]
+  C --> D[Node-RED<br/>Dashboard]
+  B --> E[LED<br/>Ventilador]
+  D -->|comando MQTT| B
+  D --> F[Usuário<br/>Monitoramento]

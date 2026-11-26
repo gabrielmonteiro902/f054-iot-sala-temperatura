@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>F054 — Monitoramento de Temperatura em Sala de Aula</title>
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --muted: #444;
+      --line: #ccc;
+    }
+    @page { margin: 18mm; }
+    body {
+      font-family: "Times New Roman", Times, serif;
+      color: var(--ink);
+      line-height: 1.45;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+      font-size: 12.5pt;
+    }
+    h1, h2, h3 { font-family: Arial, Helvetica, sans-serif; }
+    h1 { font-size: 18pt; text-align: center; margin-bottom: 8px; }
+    h2 { font-size: 14pt; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-top: 28px; }
+    h3 { font-size: 12.5pt; margin-bottom: 6px; }
+    .capa { text-align: center; min-height: 85vh; display: flex; flex-direction: column; justify-content: center; gap: 10px; page-break-after: always; }
+    .capa p { margin: 4px 0; }
+    .muted { color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11pt; }
+    th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+    th { background: #f2f2f2; }
+    code, pre { font-family: Consolas, Monaco, monospace; font-size: 10.5pt; }
+    pre { background: #f7f7f7; padding: 10px; border: 1px solid #ddd; overflow-x: auto; }
+    .box { border: 1px dashed #999; padding: 16px; margin: 12px 0; color: #555; background: #fafafa; }
+    .placeholder { font-style: italic; }
+    ul { margin-top: 6px; }
+    .assinatura { margin-top: 24px; }
+    @media print {
+      body { padding: 0; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="capa">
+    <p><strong>UNIVERSIDADE DE FORTALEZA</strong></p>
+    <p>Centro de Ciências Tecnológicas</p>
+    <p class="muted">Educação a Distância</p>
+    <br />
+    <h1>F054 — Fundamentos de Internet das Coisas (IoT)</h1>
+    <p><strong>Atividade Parcial</strong></p>
+    <br />
+    <p><strong>Monitoramento de temperatura em sala de aula<br />com ESP32, MQTT e Node-RED</strong></p>
+    <br />
+    <p><strong>Integrantes</strong></p>
+    <p class="placeholder">1. Nome completo — Matrícula</p>
+    <p class="placeholder">2. Nome completo — Matrícula</p>
+    <br />
+    <p>Fortaleza — 2026.2</p>
+    <p>Prazo de entrega: 27/11/2026</p>
+  </section>
+
+  <h2>1. Problema identificado, público e solução proposta</h2>
+  <p>
+    Em salas de aula, a temperatura tende a se elevar ao longo do dia por ocupação,
+    insolação e ventilação insuficiente. Sem monitoramento contínuo, a percepção do
+    desconforto ocorre tardiamente, prejudicando concentração e bem-estar dos estudantes.
+  </p>
+  <p>
+    <strong>Público beneficiado:</strong> alunos e equipe de manutenção/coordenação do campus.
+  </p>
+  <p>
+    <strong>Solução proposta:</strong> protótipo IoT simulado que coleta temperatura e umidade
+    com sensor DHT22 acoplado a um ESP32 (Wokwi), transmite os dados via protocolo MQTT em formato JSON,
+    processa/armazena as leituras no Node-RED, apresenta as informações em um dashboard web
+    (indicador + gráfico) e executa uma ação automatizada: acionamento de um ventilador simulado (LED)
+    quando a temperatura ultrapassa 28&nbsp;°C.
+  </p>
+
+  <h2>2. Arquitetura IoT e componentes</h2>
+  <pre>Sensor DHT22 → ESP32 → Broker MQTT (HiveMQ) → Node-RED (Dashboard)
+                 ↓                                    ↓
+           LED / Ventilador  ←———— comando MQTT ————┘
+                 ↑
+           Usuário (monitoramento)</pre>
+  <table>
+    <thead>
+      <tr><th>Camada</th><th>Componente</th><th>Função</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Sensor</td><td>DHT22</td><td>Coleta temperatura e umidade</td></tr>
+      <tr><td>Controlador</td><td>ESP32 (Wokwi)</td><td>Leitura, regra local e publicação MQTT</td></tr>
+      <tr><td>Comunicação</td><td>MQTT</td><td>Transporte das mensagens</td></tr>
+      <tr><td>Serviço</td><td>Node-RED</td><td>Recepção MQTT, regra e armazenamento CSV</td></tr>
+      <tr><td>Visualização</td><td>Dashboard web</td><td>Indicador, gráfico e alerta de automação</td></tr>
+      <tr><td>Atuador</td><td>LED</td><td>Representa ventilador</td></tr>
+      <tr><td>Usuário</td><td>Dashboard web</td><td>Acompanhamento em tempo quase real</td></tr>
+    </tbody>
+  </table>
+  <p>
+    <strong>Segurança e privacidade:</strong> o protótipo utiliza broker público sem TLS,
+    adequado apenas para fins acadêmicos. Em produção, seriam necessários autenticação,
+    criptografia, rede restrita e governança dos dados. Não há coleta de dados pessoais.
+  </p>
+
+  <h2>3. Comunicação MQTT e funcionamento do protótipo</h2>
+  <p>
+    Broker: <code>broker.hivemq.com:1883</code>. Mensagens em JSON nos tópicos:
+  </p>
+  <ul>
+    <li><code>unifor/sala101/temperatura</code> — telemetria do ESP32</li>
+    <li><code>unifor/sala101/comando</code> — comando do ventilador (Node-RED → ESP32)</li>
+    <li><code>unifor/sala101/status</code> — status online do dispositivo</li>
+  </ul>
+  <pre>{
+  "sala": "101",
+  "temperatura": 29.5,
+  "umidade": 58.0,
+  "limite": 28.0,
+  "ventilador": "ligado",
+  "unidade": "C",
+  "ts": 1731440000
+}</pre>
+  <p>
+    O firmware (MicroPython) lê o DHT22 a cada 3 segundos, publica a telemetria e aplica a
+    regra local <em>se temperatura &gt; 28 °C → liga ventilador</em>. O Node-RED consome as
+    mensagens, registra as leituras em CSV e reforça a automação publicando no tópico de comando.
+    O dashboard web exibe indicador, gráfico histórico e o estado da automação.
+  </p>
+
+  <h2>4. Evidências do circuito e do dashboard</h2>
+  <div class="box">
+    <p><strong>Dashboard</strong> com temperatura 30,5 °C, ventilador ligado e dezenas de leituras:</p>
+    <img src="evidencias/dashboard-sala101.png" style="width:100%;border:1px solid #ccc" alt="Dashboard" />
+    <p><strong>Circuito no Wokwi (ESP32 + DHT22 + LED) e Serial Monitor</strong> — com o DHT22 em 42,6 °C a leitura é publicada com <code>"ventilador": "ligado"</code>:</p>
+    <img src="evidencias/wokwi-simulacao.jpg" style="width:100%;border:1px solid #ccc" alt="Wokwi" />
+    <p><strong>Fluxo Node-RED (editor):</strong></p>
+    <img src="evidencias/nodered-fluxo.png" style="width:100%;border:1px solid #ccc" alt="Fluxo Node-RED" />
+    <p>Inserir também trecho do arquivo <code>leituras_sala101.csv</code> (≥ 20 linhas).</p>
+  </div>
+  <p>
+    Foram registradas pelo menos 20 leituras para demonstrar armazenamento e acompanhamento
+    dos dados (arquivo <code>leituras_sala101.csv</code>).
+  </p>
+
+  <h2>5. Resultados, dificuldades e benefícios</h2>
+  <p>
+    <strong>Resultados:</strong> protótipo funcional com coleta, transmissão MQTT, visualização
+    (indicador e gráfico), registro de leituras e ação automatizada sobre o atuador.
+  </p>
+  <p>
+    <strong>Dificuldades:</strong> sincronização entre simulador e broker público; instalação
+    do dashboard do Node-RED; ajuste do limiar de temperatura para demonstração clara da regra.
+  </p>
+  <p>
+    <strong>Benefícios para a comunidade:</strong> apoio à decisão de ventilação/climatização,
+    melhoria do conforto térmico em salas e possibilidade de expansão para outros ambientes
+    do campus.
+  </p>
+
+  <h2>6. Links de acesso</h2>
+  <ul>
+    <li>Projeto Wokwi: <span class="placeholder">[colar link público]</span></li>
+    <li>Vídeo de demonstração (3–5 min): <span class="placeholder">[colar link]</span></li>
+    <li>Repositório do pacote técnico: <span class="placeholder">[colar link GitHub, se houver]</span></li>
+    <li>Dashboard local (desenvolvimento): <code>http://127.0.0.1:1880/ui</code></li>
+  </ul>
+
+  <h2>7. Referências</h2>
+  <ul>
+    <li>Wokwi Documentation. https://docs.wokwi.com/</li>
+    <li>MQTT.org. https://mqtt.org/</li>
+    <li>Node-RED. https://nodered.org/</li>
+    <li>HiveMQ Public MQTT Broker. https://www.hivemq.com/public-mqtt-broker/</li>
+  </ul>
+
+  <p class="assinatura muted">
+    Documento gerado como base obrigatória da entrega. Substituir placeholders, inserir
+    capturas e dados da equipe antes do envio no AVA.
+  </p>
+</body>
+</html>
