@@ -44,13 +44,22 @@ ventilador.off()
 def conectar_wifi():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    if not wlan.isconnected():
+    while not wlan.isconnected():
         print("Conectando ao Wi-Fi...")
-        wlan.connect(WIFI_SSID, WIFI_PASS)
+        try:
+            wlan.connect(WIFI_SSID, WIFI_PASS)
+        except OSError as e:
+            print("Erro no Wi-Fi:", e)
         tentativas = 0
-        while not wlan.isconnected() and tentativas < 40:
+        while not wlan.isconnected() and tentativas < 60:
             time.sleep(0.5)
             tentativas += 1
+        if not wlan.isconnected():
+            # reinicia a interface antes de tentar outra vez
+            print("Sem Wi-Fi, tentando de novo...")
+            wlan.active(False)
+            time.sleep(1)
+            wlan.active(True)
     print("Wi-Fi:", wlan.ifconfig())
     return wlan
 
@@ -121,6 +130,7 @@ def main():
 
     while client is None:
         try:
+            conectar_wifi()
             client = conectar_mqtt()
         except Exception as e:
             print("Falha MQTT, tentando de novo:", e)
